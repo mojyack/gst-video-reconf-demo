@@ -19,8 +19,9 @@
 namespace {
 auto logger = Logger("DISPLAY");
 
-auto cam_addr = "127.0.0.1";
-auto cam_port = 8080;
+auto cam_addr  = "127.0.0.1";
+auto cam_port  = uint16_t(8080);
+auto data_port = uint16_t(8081);
 
 auto async_main() -> coop::Async<bool> {
     auto parser       = net::PacketParser();
@@ -44,13 +45,13 @@ auto async_main() -> coop::Async<bool> {
     };
     coop_ensure(co_await control_sock.connect(cam_addr, cam_port));
 
-    coop_ensure(co_await parser.receive_response<proto::Success>(proto::StartStreaming()));
+    coop_ensure(co_await parser.receive_response<proto::Success>(proto::StartStreaming{.port = data_port}));
 
     // udpsrc ! rtpjitterbuffer ! rtph264depay ! avdec_h264 ! videoconvert ! waylandsink
     auto pipeline = AutoGstObject(gst_pipeline_new(NULL));
     coop_ensure(pipeline);
     coop_unwrap_mut(udpsrc, add_new_element_to_pipeine(pipeline.get(), "udpsrc"));
-    g_object_set(&udpsrc, "port", 8081, NULL);
+    g_object_set(&udpsrc, "port", data_port, NULL);
     coop_unwrap_mut(capsfilter1, add_new_element_to_pipeine(pipeline.get(), "capsfilter"));
     set_caps(&capsfilter1, "application/x-rtp,media=video");
     coop_unwrap_mut(rtpjitterbuffer, add_new_element_to_pipeine(pipeline.get(), "rtpjitterbuffer"));
@@ -115,6 +116,7 @@ auto main(const int argc, const char* const* argv) -> int {
         auto help   = false;
         parser.kwarg(&cam_addr, {"-a", "--addr"}, "ADDRESS", "camera port address", {.state = args::State::DefaultValue});
         parser.kwarg(&cam_port, {"-p", "--port"}, "PORT", "camera port number", {.state = args::State::DefaultValue});
+        parser.kwarg(&data_port, {"-d", "--data-port"}, "PORT", "udp port number", {.state = args::State::DefaultValue});
         parser.kwflag(&help, {"-h", "--help"}, "print this help message", {.no_error_check = true});
         if(!parser.parse(argc, argv) || help) {
             std::println("usage: display {}", parser.get_help());

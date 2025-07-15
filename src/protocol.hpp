@@ -24,6 +24,9 @@ struct Error {
 
 struct StartStreaming {
     constexpr static auto pt = PacketType::StartStreaming;
+    SerdeFieldsBegin;
+    uint16_t SerdeField(port);
+    SerdeFieldsEnd;
 };
 
 struct ChangeResolution {

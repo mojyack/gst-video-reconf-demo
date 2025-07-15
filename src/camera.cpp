@@ -97,8 +97,8 @@ auto replace_dynamic_elements(GstContext& ctx) -> bool {
 
 auto gst_context = std::optional<GstContext>();
 
-auto start_streaming(const ClientData& owner) -> bool {
-    LOG_INFO(logger, "starting streaming");
+auto start_streaming(const ClientData& owner, const char* const data_addr, uint16_t data_port) -> bool {
+    LOG_INFO(logger, "starting streaming to {}:{}", data_addr, data_port);
 
     auto ctx     = GstContext();
     ctx.owner    = &owner;
@@ -128,7 +128,7 @@ auto start_streaming(const ClientData& owner) -> bool {
     // static elements tail
     unwrap_mut(rtph264pay, add_new_element_to_pipeine(pipeline, "rtph264pay"));
     unwrap_mut(udpsink, add_new_element_to_pipeine(pipeline, "udpsink"));
-    g_object_set(&udpsink, "host", "127.0.0.1", "port", 8081, "async", FALSE, NULL);
+    g_object_set(&udpsink, "host", data_addr, "port", data_port, "async", FALSE, NULL);
     ctx.static_elements_tail_head = &rtph264pay;
     ensure(gst_element_link_many(&rtph264pay, &udpsink, NULL) == TRUE);
 
@@ -166,12 +166,19 @@ auto on_pad_block(GstPad* const /*pad*/, GstPadProbeInfo* const /*info*/, gpoint
     return GST_PAD_PROBE_REMOVE;
 }
 
+auto ipv4_to_string(const uint32_t addr) -> std::string {
+    const auto [a, b, c, d] = std::bit_cast<std::array<uint8_t, 4>>(addr);
+    return std::format("{}.{}.{}.{}", d, c, b, a);
+}
+
 auto handle_payload(const net::ClientData& client_data, const net::Header header, const net::BytesRef payload) -> coop::Async<bool> {
     auto& client = *(ClientData*)client_data.data;
     switch(header.type) {
     case proto::StartStreaming::pt: {
+        coop_unwrap_mut(request, (serde::load<net::BinaryFormat, proto::StartStreaming>(payload)));
         coop_ensure(!gst_context);
-        coop_ensure(start_streaming(client));
+        coop_unwrap(addr, net::tcp::TCPServerBackend::get_peer_addr_ipv4(client_data));
+        coop_ensure(start_streaming(client, ipv4_to_string(addr).data(), request.port));
         goto success;
     }
     case proto::ChangeResolution::pt: {
