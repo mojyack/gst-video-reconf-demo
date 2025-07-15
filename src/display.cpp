@@ -80,7 +80,7 @@ loop:
     if(command == "r" || command == "res") {
         ensure_a(elms.size() == 3);
         unwrap_a(width, from_chars<uint32_t>(elms[1]));
-        unwrap_a(height, from_chars<uint32_t>(elms[1]));
+        unwrap_a(height, from_chars<uint32_t>(elms[2]));
         LOG_INFO(logger, "changing to {}x{}", width, height);
         ensure_a(co_await parser.receive_response<proto::Success>(proto::ChangeResolution{width, height}));
     } else if(command == "f" || command == "framerate") {
