@@ -172,8 +172,7 @@ auto handle_payload(const net::ClientData& client_data, const net::Header header
     case proto::StartStreaming::pt: {
         coop_ensure(!gst_context);
         coop_ensure(start_streaming(client));
-        coop_ensure(co_await client.parser.send_packet(proto::Success(), header.id));
-        co_return true;
+        goto success;
     }
     case proto::ChangeResolution::pt: {
         coop_unwrap_mut(request, (serde::load<net::BinaryFormat, proto::ChangeResolution>(payload)));
