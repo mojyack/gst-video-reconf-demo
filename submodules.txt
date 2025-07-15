@@ -1,0 +1,4 @@
+cutil https://github.com/mojyack/cutil.git b0207de1edef49ecd0c1ca9e403ac4e2f6851889
+cutil-macros https://github.com/mojyack/cutil-macros.git 5712cf2f1f585681635c82713741796de33bd7aa
+gstreamer-utils https://github.com/mojyack/gstreamer-utils.git c6a5905a5bc72ba14e7d50acc9bb586fb1e50ecf
+netprotocol https://github.com/mojyack/netprotocol.git 532f5b48b11d32761ef725eef5de54d69662c30a
