@@ -46,7 +46,7 @@ auto async_main() -> coop::Async<bool> {
 
     coop_ensure(co_await parser.receive_response<proto::Success>(proto::StartStreaming()));
 
-    // udpsrc ! rtpjitterbuffer ! rtph264depay ! avdec_h264 ! videoconvert !waylandsink
+    // udpsrc ! rtpjitterbuffer ! rtph264depay ! avdec_h264 ! videoconvert ! waylandsink
     auto pipeline = AutoGstObject(gst_pipeline_new(NULL));
     coop_ensure(pipeline);
     coop_unwrap_mut(udpsrc, add_new_element_to_pipeine(pipeline.get(), "udpsrc"));
