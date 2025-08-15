@@ -223,10 +223,8 @@ auto async_main() -> coop::Async<bool> {
     server.alloc_client = [&server](net::ClientData& client) -> coop::Async<void> {
         auto& cd            = *new ClientData();
         client.data         = &cd;
-        cd.parser.send_data = [&server, &client](const net::BytesRef payload) -> coop::Async<bool> {
-            constexpr auto error_value = false;
-            co_ensure_v(co_await server.send(client, payload));
-            co_return true;
+        cd.parser.send_data = [&server, &client](PrependableBuffer buffer) -> coop::Async<bool> {
+            return server.send(client, std::move(buffer));
         };
         co_return;
     };
@@ -238,12 +236,12 @@ auto async_main() -> coop::Async<bool> {
         }
         co_return;
     };
-    server.on_received = [](const net::ClientData& client, net::BytesRef data) -> coop::Async<void> {
+    server.on_received = [](const net::ClientData& client, PrependableBuffer buffer) -> coop::Async<void> {
         auto& c = *(ClientData*)client.data;
-        if(const auto p = c.parser.parse_received(data)) {
-            if(!co_await handle_payload(client, p->header, p->payload)) {
-                co_await c.parser.send_packet(proto::Error(), p->header.id);
-            }
+        coop_unwrap(parsed, net::split_header(buffer.body()));
+        const auto [header, payload] = parsed;
+        if(!co_await handle_payload(client, header, payload)) {
+            co_await c.parser.send_packet(proto::Error(), header.id);
         }
     };
     coop_ensure(co_await server.start(port));

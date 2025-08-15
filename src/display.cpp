@@ -27,17 +27,11 @@ auto async_main() -> coop::Async<bool> {
     auto parser       = net::PacketParser();
     auto control_sock = net::tcp::TCPClientBackend();
 
-    parser.send_data = [&control_sock](const net::BytesRef payload) -> coop::Async<bool> {
-        constexpr auto error_value = false;
-        co_ensure_v(co_await control_sock.send(payload));
-        co_return true;
+    parser.send_data = [&control_sock](PrependableBuffer buffer) -> coop::Async<bool> {
+        return control_sock.send(std::move(buffer));
     };
-    control_sock.on_received = [&parser](net::BytesRef data) -> coop::Async<void> {
-        if(const auto p = parser.parse_received(data)) {
-            const auto [header, payload] = *p;
-            coop_ensure(co_await parser.callbacks.invoke(header, payload));
-        }
-        co_return;
+    control_sock.on_received = [&parser](PrependableBuffer buffer) -> coop::Async<void> {
+        coop_ensure(co_await parser.callbacks.invoke(std::move(buffer)));
     };
     control_sock.on_closed = [] {
         LOG_WARN(logger, "disconnected");
